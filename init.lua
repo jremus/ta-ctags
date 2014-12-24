@@ -19,31 +19,59 @@
 --      For example: `textadept.ctags[#textadept.ctags + 1] = '/path/to/tags'`.
 --
 -- Textadept will use any and all *tags* files based on the above rules.
+-- @field _G.textadept.editing.autocompleters.ctag (function)
+--   Autocompleter function for ctags. (Names only; not context-sensitive).
 module('textadept.ctags')]]
 
 local M = {}
 
--- Searches file *file* for tag *tag* and appends any matching tags to table
--- *tags*.
--- @param file Ctags file to search. Tags in that file be sorted.
+-- Searches all available tags files tag *tag* and returns a table of tags
+-- found.
+-- All Ctags in tags files must be sorted.
 -- @param tag Tag to find.
--- @param tags Table of matching tags.
-local function find_tags(file, tag, tags)
+-- @return table of tags found with each entry being a table that contains the
+--   4 ctags fields
+local function find_tags(tag)
   -- TODO: binary search?
-  local found = false
+  local tags = {}
   local patt = '^('..tag..'%S*)\t(%S+)\t(.-);"\t?(.*)$'
-  local dir = file:match('^.+[/\\]')
-  for line in io.lines(file) do
-    local tag, file, ex_cmd, ext_fields = line:match(patt)
-    if tag then
-      if not file:find('^%a?:?[/\\]') then file = dir..file end
-      if ex_cmd:find('^/') then ex_cmd = ex_cmd:match('^/^(.+)$/$') end
-      tags[#tags + 1] = {tag, file, ex_cmd, ext_fields}
-      found = true
-    elseif found then
-      return -- tags are sorted, so no more matches exist in this file
+  -- Determine the tag files to search in.
+  local tag_files = {}
+  local tag_file = ((buffer.filename or ''):match('^.+[/\\]') or
+                    lfs.currentdir()..'/')..'tags' -- current directory's tags
+  if lfs.attributes(tag_file) then tag_files[#tag_files + 1] = tag_file end
+  if buffer.filename then
+    local root = io.get_project_root(buffer.filename)
+    if root then
+      tag_file = root..'/tags' -- project's tags
+      if lfs.attributes(tag_file) then tag_files[#tag_files + 1] = tag_file end
+      tag_file = M[root] -- project's specified tags
+      if type(tag_file) == 'string' then
+        tag_files[#tag_files + 1] = tag_file
+      elseif type(tag_file) == 'table' then
+        for i = 1, #tag_file do tag_files[#tag_files + 1] = tag_file[i] end
+      end
     end
   end
+  for i = 1, #M do tag_files[#tag_files + 1] = M[i] end -- global tags
+  -- Search all tags files for matches.
+  for i = 1, #tag_files do
+    local dir, found = tag_files[i]:match('^.+[/\\]'), false
+    local f = io.open(tag_files[i])
+    for line in f:lines() do
+      local tag, file, ex_cmd, ext_fields = line:match(patt)
+      if tag then
+        if not file:find('^%a?:?[/\\]') then file = dir..file end
+        if ex_cmd:find('^/') then ex_cmd = ex_cmd:match('^/^(.+)$/$') end
+        tags[#tags + 1] = {tag, file, ex_cmd, ext_fields}
+        found = true
+      elseif found then
+        break -- tags are sorted, so no more matches exist in this file
+      end
+    end
+    f:close()
+  end
+  return tags
 end
 
 -- List of jump positions comprising a jump history.
@@ -78,32 +106,10 @@ function M.goto_tag(tag, prev)
     return
   end
   -- Search for potential tags to jump to.
-  local tags = {}
-  -- Search in directory tags.
-  local tag_file = ((buffer.filename or ''):match('^.+[/\\]') or
-                    lfs.currentdir()..'/')..'tags'
-  if lfs.attributes(tag_file) then find_tags(tag_file, tag, tags) end
-  if buffer.filename then
-    -- Search in project-related tags.
-    local root = io.get_project_root(buffer.filename)
-    if root then
-      -- Project tags.
-      tag_file = root..'/tags'
-      if lfs.attributes(tag_file) then find_tags(tag_file, tag, tags) end
-      -- Project-specified tags.
-      tag_file = M[root]
-      if type(tag_file) == 'string' then
-        find_tags(tag_file, tag, tags)
-      elseif type(tag_file) == 'table' then
-        for i = 1, #tag_file do find_tags(tag_file[i], tag, tags) end
-      end
-    end
-  end
-  -- Search in global tags.
-  for i = 1, #M do find_tags(M[i], tag, tags) end
+  local tags = find_tags(tag)
   if #tags == 0 then return end
-  tag = tags[1]
-  -- Prompt the user to select a tag from multiple candidates.
+  -- Prompt the user to select a tag from multiple candidates or automatically
+  -- pick the only one.
   if #tags > 1 then
     local items = {}
     for i = 1, #tags do
@@ -119,6 +125,8 @@ function M.goto_tag(tag, prev)
     }
     if button < 1 then return end
     tag = tags[i]
+  else
+    tag = tags[1]
   end
   -- Store the current position in the jump history if applicable, clearing any
   -- jump history positions beyond the current one.
@@ -144,6 +152,17 @@ function M.goto_tag(tag, prev)
   -- Store the new position in the jump history.
   jump_list[#jump_list + 1] = {buffer.filename, buffer.current_pos}
   jump_list.pos = #jump_list
+end
+
+-- Autocompleter function for ctags.
+-- Does not remove duplicates.
+textadept.editing.autocompleters.ctag = function()
+  local completions = {}
+  local s = buffer:word_start_position(buffer.current_pos, true)
+  local e = buffer:word_end_position(buffer.current_pos, true)
+  local tags = find_tags(buffer:text_range(s, e))
+  for i = 1, #tags do completions[#completions + 1] = tags[i][1] end
+  return e - s, completions
 end
 
 -- Add Ctags functions to the menubar.
