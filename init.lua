@@ -10,18 +10,18 @@
 --      in a tag search from any file in that directory.
 --   2. Place a *tags* file in a project's root directory. This file will be
 --      used in a tag search from any of that project's source files.
---   3. Add a *tags* file or list of *tags* files to the `textadept.ctags` table
---      for a project root key. This file(s) will be used in a tag search from
---      any of that project's source files.
---      For example: `textadept.ctags['/path/to/project'] = '/path/to/tags'`.
---   4. Add a *tags* file to the `textadept.ctags` table. This file will be used
---      in any tag search.
---      For example: `textadept.ctags[#textadept.ctags + 1] = '/path/to/tags'`.
+--   3. Add a *tags* file or list of *tags* files to the `_M.ctags` table for a
+--      project root key. This file(s) will be used in a tag search from any of
+        that project's source files.
+--      For example: `_M.ctags['/path/to/project'] = '/path/to/tags'`.
+--   4. Add a *tags* file to the `_M.ctags` table. This file will be used in any
+--      tag search.
+--      For example: `_M.ctags[#_M.ctags + 1] = '/path/to/tags'`.
 --
 -- Textadept will use any and all *tags* files based on the above rules.
 -- @field _G.textadept.editing.autocompleters.ctag (function)
 --   Autocompleter function for ctags. (Names only; not context-sensitive).
-module('textadept.ctags')]]
+module('_M.ctags')]]
 
 local M = {}
 
