@@ -12,11 +12,14 @@
 --      used in a tag search from any of that project's source files.
 --   3. Add a *tags* file or list of *tags* files to the `_M.ctags` table for a
 --      project root key. This file(s) will be used in a tag search from any of
-        that project's source files.
+--      that project's source files.
 --      For example: `_M.ctags['/path/to/project'] = '/path/to/tags'`.
 --   4. Add a *tags* file to the `_M.ctags` table. This file will be used in any
 --      tag search.
 --      For example: `_M.ctags[#_M.ctags + 1] = '/path/to/tags'`.
+--   5. As a last resort, if no *tags* files were found, or if there is no match
+--      for a given symbol, a temporary *tags* file is generated for the current
+--      file and used.
 --
 -- Textadept will use any and all *tags* files based on the above rules.
 -- @field _G.textadept.editing.autocompleters.ctag (function)
@@ -55,6 +58,8 @@ local function find_tags(tag)
   end
   for i = 1, #M do tag_files[#tag_files + 1] = M[i] end -- global tags
   -- Search all tags files for matches.
+  local tmpfile
+  ::retry::
   for i = 1, #tag_files do
     local dir, found = tag_files[i]:match('^.+[/\\]'), false
     local f = io.open(tag_files[i])
@@ -71,6 +76,14 @@ local function find_tags(tag)
     end
     f:close()
   end
+  if #tags == 0 and buffer.filename and not tmpfile then
+    -- If no matches were found, try the current file.
+    tmpfile = os.tmpname()
+    spawn('ctags -o "'..tmpfile..'" "'..buffer.filename..'"'):wait()
+    tag_files = {tmpfile}
+    goto retry
+  end
+  if tmpfile then os.remove(tmpfile) end
   return tags
 end
 
