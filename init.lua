@@ -178,19 +178,21 @@ textadept.editing.autocompleters.ctag = function()
   return e - s, completions
 end
 
--- Add Ctags functions to the menubar.
--- Connect to `events.INITIALIZED` in order to allow key bindings to be set up
--- such that they reflect accurately in the menu.
-events.connect(events.INITIALIZED, function()
-  if not textadept.menu then return end
-  local tools = textadept.menu.menubar[4]
-  tools[#tools + 1] = {''} -- separator
-  tools[#tools + 1] = {
-    title = 'Ctags',
-    {'Goto Ctag', M.goto_tag},
-    {'Jump Back', {M.goto_tag, nil, true}},
-    {'Jump Forward', {M.goto_tag, nil, false}}
-  }
-end)
+-- Add menu entries.
+local m_search = textadept.menu.menubar[_L['_Search']]
+m_search[#m_search + 1] = {''} -- separator
+m_search[#m_search + 1] = {
+  title = '_Ctags',
+  {'_Goto Ctag', M.goto_tag},
+  {'G_oto Ctag...', function()
+    local button, name = ui.dialogs.standard_inputbox{title = 'Goto Tag'}
+    if button == 1 then _M.ctags.goto_tag(name) end
+  end},
+  {''},
+  {'Jump _Back', function() M.goto_tag(nil, true) end},
+  {'Jump _Forward', function() M.goto_tag(nil, false) end},
+  {''},
+  {'_Autocomplete Tag', function() textadept.editing.autocomplete('ctag') end}
+}
 
 return M
