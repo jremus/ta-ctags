@@ -155,12 +155,12 @@ function M.goto_tag(tag, prev)
   if not tonumber(tag[3]) then
     for i = 0, buffer.line_count - 1 do
       if buffer:get_line(i):find(tag[3], 1, true) then
-        textadept.editing.goto_line(i + 1)
+        textadept.editing.goto_line(i)
         break
       end
     end
   else
-    textadept.editing.goto_line(tonumber(tag[3]))
+    textadept.editing.goto_line(tonumber(tag[3]) - 1)
   end
   -- Store the new position in the jump history.
   jump_list[#jump_list + 1] = {buffer.filename, buffer.current_pos}
