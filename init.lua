@@ -28,6 +28,9 @@ module('_M.ctags')]]
 
 local M = {}
 
+-- Default Ctags executable.
+M.CTAGS = 'ctags'
+
 -- Searches all available tags files tag *tag* and returns a table of tags
 -- found.
 -- All Ctags in tags files must be sorted.
@@ -79,7 +82,7 @@ local function find_tags(tag)
   if #tags == 0 and buffer.filename and not tmpfile then
     -- If no matches were found, try the current file.
     tmpfile = os.tmpname()
-    spawn('ctags -o "'..tmpfile..'" "'..buffer.filename..'"'):wait()
+    spawn(M.CTAGS..' -o "'..tmpfile..'" "'..buffer.filename..'"'):wait()
     tag_files = {tmpfile}
     goto retry
   end
