@@ -40,7 +40,7 @@ M.CTAGS = 'ctags'
 local function find_tags(tag)
   -- TODO: binary search?
   local tags = {}
-  local patt = '^('..tag..'%S*)\t(%S+)\t(.-);"\t?(.*)$'
+  local patt = '^('..tag..'%S*)\t([^\t]+)\t(.-);"\t?(.*)$'
   -- Determine the tag files to search in.
   local tag_files = {}
   local tag_file = ((buffer.filename or ''):match('^.+[/\\]') or
