@@ -24,9 +24,14 @@
 -- Textadept will use any and all *tags* files based on the above rules.
 -- @field _G.textadept.editing.autocompleters.ctag (function)
 --   Autocompleter function for ctags. (Names only; not context-sensitive).
+-- @field ctags (string)
+--    Path to the ctags executable.
+--    The default value is `ctags`.
 module('_M.ctags')]]
 
 local M = {}
+
+M.ctags = 'ctags'
 
 -- Searches all available tags files tag *tag* and returns a table of tags
 -- found.
@@ -37,7 +42,7 @@ local M = {}
 local function find_tags(tag)
   -- TODO: binary search?
   local tags = {}
-  local patt = '^('..tag..'%S*)\t(%S+)\t(.-);"\t?(.*)$'
+  local patt = '^('..tag..'%S*)\t([^\t]+)\t(.-);"\t?(.*)$'
   -- Determine the tag files to search in.
   local tag_files = {}
   local tag_file = ((buffer.filename or ''):match('^.+[/\\]') or
@@ -67,7 +72,7 @@ local function find_tags(tag)
       local tag, file, ex_cmd, ext_fields = line:match(patt)
       if tag then
         if not file:find('^%a?:?[/\\]') then file = dir..file end
-        if ex_cmd:find('^/') then ex_cmd = ex_cmd:match('^/^(.+)$/$') end
+        if ex_cmd:find('^/') then ex_cmd = ex_cmd:match('^/^?(.+)$?/$') end
         tags[#tags + 1] = {tag, file, ex_cmd, ext_fields}
         found = true
       elseif found then
@@ -79,7 +84,9 @@ local function find_tags(tag)
   if #tags == 0 and buffer.filename and not tmpfile then
     -- If no matches were found, try the current file.
     tmpfile = os.tmpname()
-    spawn('ctags -o "'..tmpfile..'" "'..buffer.filename..'"'):wait()
+    local cmd = string.format('"%s" -o "%s" "%s"', M.ctags, tmpfile,
+                              buffer.filename)
+    spawn(cmd):wait()
     tag_files = {tmpfile}
     goto retry
   end
