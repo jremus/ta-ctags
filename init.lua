@@ -24,12 +24,14 @@
 -- Textadept will use any and all *tags* files based on the above rules.
 -- @field _G.textadept.editing.autocompleters.ctag (function)
 --   Autocompleter function for ctags. (Names only; not context-sensitive).
+-- @field ctags (string)
+--    Path to the ctags executable.
+--    The default value is `ctags`.
 module('_M.ctags')]]
 
 local M = {}
 
--- Default Ctags executable.
-M.CTAGS = 'ctags'
+M.ctags = 'ctags'
 
 -- Searches all available tags files tag *tag* and returns a table of tags
 -- found.
@@ -82,7 +84,9 @@ local function find_tags(tag)
   if #tags == 0 and buffer.filename and not tmpfile then
     -- If no matches were found, try the current file.
     tmpfile = os.tmpname()
-    spawn(M.CTAGS..' -o "'..tmpfile..'" "'..buffer.filename..'"'):wait()
+    local cmd = string.format('"%s" -o "%s" "%s"', M.ctags, tmpfile,
+                              buffer.filename)
+    spawn(cmd):wait()
     tag_files = {tmpfile}
     goto retry
   end
